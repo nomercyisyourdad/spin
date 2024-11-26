@@ -1,0 +1,144 @@
+local user = game.Players.LocalPlayer
+local character = user.Character or user.CharacterAdded:Wait()
+local mouse = user:GetMouse()
+
+-- Display "Made by ZF za1k" message in the center of the screen
+local function showCredits()
+    -- Create a ScreenGui and a TextLabel
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = user.PlayerGui
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(0, 400, 0, 50)
+    textLabel.Position = UDim2.new(0.5, -200, 0.5, -25)
+    textLabel.Text = "Made by ZF za1k"
+    textLabel.TextSize = 24
+    textLabel.TextColor3 = Color3.fromRGB(0, 0, 0)  -- Black text
+    textLabel.TextTransparency = 0.4  -- 60% opacity (40% transparent)
+    textLabel.BackgroundTransparency = 1  -- No background
+    textLabel.Parent = screenGui
+    
+    -- Wait for 3 seconds, then remove the text label and start the script
+    wait(3)
+    screenGui:Destroy()
+end
+
+-- Show credits at the start
+showCredits()
+
+-- Variables for spinning
+local spinning = false
+local spinSpeed = 5 -- Default speed of the spinning (higher is faster)
+local radius = 10  -- Distance from the player to spin around
+local targetPlayer = nil -- The player to spin around
+
+-- Function to find the closest player
+local function findClosestPlayer()
+    local closestPlayer = nil
+    local closestDistance = math.huge -- Start with a very large number
+
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player.Character and player.Character ~= character then
+            local distance = (player.Character.HumanoidRootPart.Position - character.HumanoidRootPart.Position).Magnitude
+            if distance < closestDistance then
+                closestPlayer = player
+                closestDistance = distance
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+-- Function to teleport the character to a position near the closest player
+local function teleportToPlayer(player)
+    if player and player.Character then
+        -- Teleport slightly in front of the player
+        local targetPosition = player.Character.HumanoidRootPart.Position
+        local offset = Vector3.new(radius, 0, 0) -- Adjust radius to a small offset
+        local newPosition = targetPosition + offset
+
+        character:SetPrimaryPartCFrame(CFrame.new(newPosition))
+    end
+end
+
+-- Function to start spinning around the player
+local function startSpinning()
+    if targetPlayer and targetPlayer.Character then
+        local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
+        local angle = 0
+
+        -- Spinning loop
+        while spinning do
+            -- Increment the angle based on the spinSpeed
+            angle = angle + spinSpeed
+            if angle > 360 then
+                angle = angle - 360 -- Reset the angle after a full circle
+            end
+
+            -- Calculate the new position around the player
+            local x = targetPosition.X + radius * math.cos(math.rad(angle))
+            local z = targetPosition.Z + radius * math.sin(math.rad(angle))
+
+            -- Update the character's position around the player
+            character.HumanoidRootPart.CFrame = CFrame.new(x, targetPosition.Y, z) * CFrame.Angles(0, math.rad(angle), 0)
+
+            -- Wait a small time before the next movement (to smooth out the rotation)
+            wait(0.03)
+        end
+    end
+end
+
+-- Button click event (to toggle the spinning)
+local function onSpinButtonClick()
+    if spinning then
+        -- Stop spinning
+        spinning = false
+        targetPlayer = nil  -- Reset the target player
+    else
+        -- Find the closest player and teleport to them
+        local closestPlayer = findClosestPlayer()
+        if closestPlayer then
+            targetPlayer = closestPlayer
+            teleportToPlayer(closestPlayer)
+            spinning = true
+            startSpinning()  -- Start the spinning
+        else
+            print("No players nearby to spin around!")
+        end
+    end
+end
+
+-- Create the spin button and connect the onSpinButtonClick function
+local function createSpinButton()
+    -- Create a ScreenGui and the button
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = user.PlayerGui
+    
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 200, 0, 50)  -- Button size
+    button.Position = UDim2.new(0.5, -100, 0.8, -25)  -- Button position near the bottom center
+    button.Text = "Spin Around"
+    button.TextSize = 24
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    button.BackgroundTransparency = 0.4  -- Semi-transparent button
+    button.Parent = screenGui
+    
+    -- Button click event
+    button.MouseButton1Click:Connect(onSpinButtonClick)
+end
+
+-- Create the spin button
+createSpinButton()
+
+-- Optional: Make the spinSpeed adjustable by typing in the chat
+game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.OnMessageDoneFiltering.OnClientEvent:Connect(function(message)
+    if message:lower():match("^spin speed (%d+)$") then
+        local newSpeed = tonumber(message:match("%d+"))
+        if newSpeed then
+            spinSpeed = newSpeed
+            print("Spin speed changed to: " .. spinSpeed)
+        end
+    end
+end)
